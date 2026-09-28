@@ -26,3 +26,8 @@ Seuls NOTES.md et NEW_MACHINE.md sont des documents vivants, à tenir à jour.
 
 Quand le dépôt contient un `DOCSITE.md`, l'appliquer : c'est le contrat du site de
 documentation externe qui rend ce dépôt.
+
+## Documentation
+
+Quand le dépôt contient un `DOCSITE.md`, l'appliquer : c'est le contrat du site de
+documentation externe qui rend ce dépôt.
