@@ -1,0 +1,12 @@
+# -> destination: ~/.zshenv
+# Read before /etc/zshrc (NixOS-generated), which is where `source $ZSH/oh-my-zsh.sh`
+# actually happens. Setting ZSH_CUSTOM/ZSH_THEME here — instead of in ~/.zshrc, which
+# runs too late — is what makes custom/aliases.zsh, custom/keybindings.zsh and the
+# powerlevel10k theme actually get picked up. See NOTES.md "oh-my-zsh conflict".
+
+export ZSH_CUSTOM="$HOME/.oh-my-zsh/custom"
+
+# Only takes effect once pkgs.zsh-powerlevel10k (or equivalent) is installed and
+# symlinked/copied into $ZSH_CUSTOM/themes/powerlevel10k — until then oh-my-zsh will
+# warn "theme not found" and fall back to the default prompt, harmless in the meantime.
+export ZSH_THEME="powerlevel10k/powerlevel10k"

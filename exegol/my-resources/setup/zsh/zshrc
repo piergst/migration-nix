@@ -1,0 +1,31 @@
+# Config file dedicated to the user's personal zshrc profile shared between all exegol containers.
+# This file is sourced in /root/.zshrc file.
+# Alternatively, the /opt/my-resources/setup/load_user_setup.sh file can be used to operate the change once (instead of sourcing a file for each zsh instance)
+
+# Load p10k instant prompt cache for faster shell startup
+# Must stay at the top of .zshrc before any console output
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# Remove zsh-z plugin (replaced by another tool or not needed)
+plugins=(${plugins[@]/zsh-z/})
+
+# Add zsh-history-substring-search plugin if not already present
+if [[ ! " ${plugins[@]} " =~ " zsh-history-substring-search " ]]; then
+  plugins+=(zsh-history-substring-search)
+fi
+
+# Set powerlevel10k as the zsh theme
+ZSH_THEME="powerlevel10k/powerlevel10k"
+
+# Load custom p10k config from Exegol shared resources if it exists
+[[ ! -f /opt/my-resources/setup/zsh/p10k.zsh ]] || source /opt/my-resources/setup/zsh/p10k.zsh
+
+# Initialize oh-my-zsh framework
+source $ZSH/oh-my-zsh.sh
+
+# Use native zsh completion widget to bypass zsh-autosuggestions wrapper
+# Fixes tab completion not working for aliased commands (e.g. ls -> eza)
+bindkey '^I' .expand-or-complete
+

@@ -1,0 +1,31 @@
+# -> destination: ~/.profile
+#
+# NIXOS NOTE: with greetd + UWSM, ~/.profile is not guaranteed to be sourced
+# by the graphical session (only real login shells read it). The
+# NixOS-idiomatic place for these is `home.sessionVariables` in home.nix,
+# which UWSM/systemd --user picks up reliably. Keep this file only if you
+# still want them available in plain TTY logins too; otherwise move the
+# content below into home.nix instead.
+
+# Old value: cachy-browser (CachyOS-specific wrapper, doesn't exist here)
+export BROWSER=firefox
+
+# Old value: /usr/bin/vim (hardcoded FHS path, doesn't exist on NixOS)
+# Already set to nvim in ~/.zshrc; repeated here so GUI apps launched
+# outside a shell (e.g. from Hyprland binds) see it too.
+export EDITOR=nvim
+
+export MAIL=thunderbird
+export TERM=alacritty
+
+# Needs pkgs.qt5ct (or qt6ct) added to home.nix — not currently installed.
+# Keeps Qt apps (e.g. KeePassXC) matching the GTK dark theme set in home.nix.
+export QT_QPA_PLATFORMTHEME="qt5ct"
+
+# GTK2_RC_FILES dropped: GTK2 theming is dead weight, nothing left uses it.
+
+# Dropped: XDG_SESSION_TYPE=x11 — this is a Wayland/Hyprland session now,
+# the compositor/greetd already set XDG_SESSION_TYPE=wayland correctly.
+
+# Dropped: `. "$HOME/.local/bin/env"` — that file doesn't exist on this
+# machine (it was a rustup/uv self-install shim; uv now comes from nixpkgs).

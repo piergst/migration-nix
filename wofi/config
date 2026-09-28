@@ -1,0 +1,18 @@
+# -> destination: ~/.config/wofi/config
+# Your current live file, plus vim-style row navigation
+# (was `kb-row-up: alt+k,Up` / `kb-row-down: alt+j,Down` in the old rofi config.rasi)
+
+show=drun
+prompt=Search
+insensitive=true
+allow_images=true
+image_size=24
+width=500
+lines=8
+columns=1
+location=center
+no_actions=true
+gtk_dark=true
+
+key_up=Alt-k,Up
+key_down=Alt-j,Down

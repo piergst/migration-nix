@@ -1,0 +1,31 @@
+[window.padding]
+x = 10
+y = 10
+
+[keyboard]
+bindings = [ 
+  { key = "V", mods = "Alt", mode = "~Vi", action = "ToggleViMode" },
+  { key = "p", mods = "Alt", action = "Paste" },
+  { key = "y", mods = "Alt", action = "Copy" },
+  { key = "g", mods = "Alt", chars = "\u0003" },
+  { key = "$", mode = "Vi|~Search", action = "Last" },
+{ key = "0", mods = "Shift",  mode = "Vi|~Search", action = "First" },
+  { key = "x", mode = "Vi|~Search", action = "ClearSelection" }
+]
+
+[cursor]
+# # Set to false to disable completely
+# smooth_motion_spring = 0.5
+# smooth_motion = true
+# # 0.0 = cursor is not moving, 1.0 = cursor moves instantly
+smooth_motion_factor = 0.2
+# # 0.0 = broken, 1.0 = cursor shape is unaffected by movement
+# smooth_motion_max_stretch_x = 3.0
+# # Limits how the cursor size may change
+# smooth_motion_max_stretch_y = 3.0
+# # Override "block" cursor if you don't like how it looks in this fork
+# # I prefer "underline"
+# block_replace_shape = "underline"
+
+[font]
+size = 12.0

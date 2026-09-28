@@ -1,0 +1,93 @@
+{
+  // "workbench.colorTheme": "wallbash",
+  "vscode-neovim.neovimInitVimPaths.linux": "/home/pierre/.config/nvim/init.vim",
+  "extensions.experimental.affinity": {
+    "asvetliakov.vscode-neovim": 1
+  },
+  "vscode-neovim.neovimInitVimPaths.darwin": "/home/pierre/.config/nvim/init.vim",
+  "window.zoomLevel": 1,
+  "cmake.showOptionsMovedNotification": false,
+  "cmake.configureOnOpen": false,
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  },
+  "pythonTestExplorer.testFramework": "pytest",
+  "python.languageServer": "Jedi",
+  "python.testing.pytestEnabled": true,
+  "git.openRepositoryInParentFolders": "never",
+  "vscode-neovim.neovimExecutablePaths.linux": "/usr/bin/nvim",
+  "terminal.external.linuxExec": "/usr/bin/kitty",
+  "workbench.editor.showTabs": "single",
+  "security.workspace.trust.untrustedFiles": "open",
+  "window.customTitleBarVisibility": "auto",
+  "terminal.integrated.commandsToSkipShell": [
+    " - workbench.action.terminal.clear"
+  ],
+  "terminal.integrated.automationProfile.linux": {},
+  "terminal.integrated.cursorBlinking": true,
+  "terminal.integrated.experimental.windowsUseConptyDll": true,
+  "terminal.integrated.sendKeybindingsToShell": true,
+  "terminal.integrated.shellIntegration.decorationsEnabled": "never",
+  "terminal.integrated.tabs.focusMode": "singleClick",
+  "terminal.integrated.altClickMovesCursor": false,
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "ruff.nativeServer": "on",
+  "vscode-neovim.neovimWidth": 80,
+  "vim.enableNeovim": true,
+  "vim.neovimPath": "/usr/bin/nvim",
+  "vim.neovimConfigPath": "$HOME/.config/nvim/init.vim",
+  "vim.neovimUseConfigFile": true,
+  "vim.useSystemClipboard": true,
+  "vim.vimrc.path": "$HOME/.config/nvim/init.vim",
+  "vim.insertModeKeyBindings": [
+    {
+      "before": [
+        ";",
+        ";"
+      ],
+      "after": [
+        "<Esc>"
+      ]
+    }
+  ],
+  "explorer.confirmDelete": false,
+  "search.seedWithNearestWord": true,
+  "terminal.integrated.defaultProfile.linux": "zsh",
+  "terminal.integrated.profiles.linux": {
+    "bash": {
+      "path": "bash",
+      "icon": "terminal-bash"
+    }
+  },
+  "files.autoSave": "afterDelay",
+  "terminal.integrated.defaultProfile.osx": "",
+  "[css]": {
+    "editor.defaultFormatter": "lonefy.vscode-JS-CSS-HTML-formatter"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "mkhl.shfmt"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "shellcheck.customArgs": [
+    "-x "
+  ],
+  "redhat.telemetry.enabled": false,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "continue.enableNextEdit": false,
+  "claudeCode.preferredLocation": "panel",
+  "claudeCode.selectedModel": "default"
+}
