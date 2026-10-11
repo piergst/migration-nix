@@ -19,7 +19,7 @@ Phase 2 (later): fold whatever survives into `home.nix` / `configuration.nix` vi
 | `zsh/p10k.zsh` | `~/.p10k.zsh` | Needs a powerlevel10k theme source (see below). |
 | `tmux/tmux.conf` | `~/.tmux.conf` | Trivial, just `mouse on`. |
 | `alacritty/alacritty.toml` | `~/.config/alacritty/alacritty.toml` | Unchanged from the old config. |
-| `nvim/` | `~/.config/nvim/` | Unchanged LazyVim config, WM-independent. |
+| `nvim/` | `~/.config/nvim/` | **État initial** : LazyVim d'origine, conservé tel quel. La config live a été réécrite en Lua sans LazyVim le 2026-10-11 — voir "Neovim — config réécrite". |
 | `vscodium/*.json` | `~/.config/VSCodium/User/` | Deployed. |
 | `exegol/` | `~/.exegol/` | Skipped for now — `exegol` binary not installed on this machine, low priority. |
 | `profile/profile` | **skipped** | `~/.profile` isn't reliably read by a UWSM/Hyprland session anyway. Only `BROWSER=firefox` and `MAIL=thunderbird` were worth keeping (`TERM`/`EDITOR` are redundant or handled elsewhere) — carry those two into `home.sessionVariables` in phase 2 instead. |
@@ -985,13 +985,14 @@ Base : [`burakTanBilgi/omarchy-desktop-groups`](https://github.com/burakTanBilgi
    `focusedmon`, **et** `openwindow`/`closewindow`/`movewindow` (l'occupation d'un
    groupe change aussi à l'ouverture/fermeture d'une fenêtre) : pas de polling,
    donc pas de lag. Un `nc` par module (5) reste bien moins coûteux qu'un poll :
-   un `hyprctl` coûte ~20 ms, 5 modules en poll à 1 s satureraient un c½ur.
-   `indicator N` émet `●` si N est le groupe courant, `○` s'il est occupé, rien
-   sinon ; `hide-if-empty = true` masque alors le bouton **et son espace**. Filtre
-   identique au module workspaces (`min-workspace-count=0`) : seuls les groupes
-   occupés s'affichent, **plus toujours le groupe courant** même vide — un groupe
-   n'existe pas en soi, c'est une bande d'IDs, et Hyprland ne matérialise un ws
-   qu'avec une fenêtre. Clic gauche = groupe N ; `Super+CTRL+n` reste l'accès direct.
+   un `hyprctl` coûte ~20 ms, 5 modules en poll à 1 s satureraient un cœur.
+   `indicator N` émet `●` si N est le groupe courant, `○` s'il a des fenêtres,
+   `·` sinon. Les trois glyphes sont non vides, donc les **5 points sont toujours
+   affichés** et le Nième est toujours le groupe N — cliquable même vide, pour y
+   aller et l'occuper. `hide-if-empty = true` reste donc sans effet. Un point
+   absent était trompeur : les groupes vides disparaissant du rang, le 3e point
+   affiché pouvait être le groupe 5 (constaté le 2026-10-01).
+   Clic gauche = groupe N ; `Super+CTRL+n` reste l'accès direct.
    (Les commandes wayle vivent dans `~/.config/wayle/runtime.toml`, la couche
    « runtime override » — `wayle config set` y écrit ; `config.toml` ne fait que
    `imports = ["wsgroup.toml"]`. Wayle charge les deux : `include = ["config.toml",
@@ -1041,12 +1042,39 @@ Base : [`burakTanBilgi/omarchy-desktop-groups`](https://github.com/burakTanBilgi
 - **hyprshell** : son window switcher est resté désactivé depuis l'essai hyprkool
   (`~/.config/hyprshell/config.ron`, `switch = None`), ce qui a libéré `Super+Tab`
   pour « cycle groupe ». À réactiver si on veut récupérer le switcher.
-- **`nc` qui s'empile** : wayle ne tue pas le `nc` petit-fils du module `watch`
-  quand il le relance — chaque restart en laisse un, reparenté à systemd
-  (`ppid 1660`). Corrigé dans `pkgs/omarchy-wsgroup.sh` : chaque module lance son
-  `nc` avec un argv marqué (`exec -a "wsgroup-nc-$N"`) et `indicator $N` fait
-  `pkill -f "wsgroup-nc-$N"` au démarrage → il ne tue que l'instance de SON
-  module, pas les 4 autres. Effectif (rebuild fait).
+- **`nc` qui s'empile, puis boucle à 1 Hz (2026-10-01)** : wayle ne tue pas le
+  `nc` petit-fils du module `watch` quand il le relance (`kill_on_drop` ne frappe
+  que l'enfant direct). Première parade : marquer son `nc` (`exec -a
+  "wsgroup-nc-$N"`) et le tuer au démarrage de `indicator $N`. **Faux
+  correctif** : ce `pkill` tuait aussi le `nc` de l'instance ENCORE VIVANTE du
+  même module → son `bash` parent sortait (code 0) → `restart-policy =
+  "on-exit"` + `restart-interval-ms = 1000` relançait une instance 1 s plus tard,
+  qui re-tuait le `nc` en place : boucle auto-entretenue. Mesures : PID du `bash`
+  parent changé toutes les ~1,03 s, `nc` vivant ~0,7 s par cycle, et sous
+  `strace` un `nc` tué par SIGTERM d'un `pkill` 0,3 s après s'être connecté.
+  Symptôme visible : le point sélectionné ne suivait qu'avec ~1 s de retard.
+  Remplacé par une récolte des **seuls orphelins** (on ne coupe un
+  `wsgroup-nc-$N` que si son parent n'est plus un `indicator $N` vivant).
+- **Saturation `hyprctl` : ~175 ms par bascule (2026-10-01)** : chaque émission
+  coûtait 2 `hyprctl` (`activeworkspace`, `workspaces`) plus `jq`, soit ~20
+  appels concurrents pour 10 instances (2 barres, une par écran). Mesuré : 1
+  `hyprctl` ≈ 21 ms, 20 concurrents ≈ 175 ms (CPU-bound, i7-5557U, 4 threads),
+  donc le dernier point se redessinait jusqu'à 175 ms après l'événement — d'où
+  l'instant où l'ancien et le nouveau point étaient ● en même temps. Corrigé :
+  `indicator` garde `cur`/`occ` en mémoire et les déduit de la ligne du socket
+  (`workspace>>ID[,nom]`, `focusedmon>>écran,nom`, `openwindow>>adresse,nom`),
+  avec repli `hyprctl` pour un ws nommé/spécial et pour `closewindow` /
+  `movewindow`. Une bascule de groupe ne coûte plus **aucune** commande externe.
+- **`code:` dans `hyprctl binds`** : un bind par keycode s'affiche avec `key=""`
+  et `keycode=0`, parce qu'il est rangé dans `sMkKeys`
+  (`(NoSymbol, keycode)`, `LuaBindingsToplevel.cpp`) et que le JSON de `hyprctl`
+  n'expose pas `sMkKeys`. Ce n'est **pas** un bind mort : piste fausse explorée
+  le 2026-10-01 en croyant les binds `Super+CTRL+1..5` cassés.
+- **Le fichier d'état comme témoin** : `set_state` réécrit la clé en fin de
+  fichier, donc l'ordre des lignes de `wsgroup.state` rejoue l'historique des
+  écritures (`remember_current` écrit `last_g<groupe courant>` puis
+  `current_group`). Pratique pour savoir quelle commande a réellement tourné
+  quand la barre semble ne pas réagir.
 - **Modules `watch` résidents après rebuild** : chaque `custom-wsgN` lance un
   process long `omarchy-wsgroup indicator N` (il tient `nc -U` sur le socket) ;
   un `nixos-rebuild switch` remplace le binaire mais **ne relance pas** ces
@@ -1103,3 +1131,161 @@ C'est pourquoi `wsgroup.toml` ne contient que des **tables** (`workspace-ignore`
 - (b) garder le wayle manuel (statut quo).
 
 À trancher selon si l'édition graphique de wayle est utilisée.
+
+## VSCodium — réglages vim (2026-10-09)
+
+### `j`/`k` sur les lignes affichées
+
+Objectif : en mode vim, `j`/`k` descendent/remontent d'une **ligne affichée**
+(soft wrap), pas d'une ligne de buffer — en Normal comme en Visual. Même besoin
+que le remap Zed de `~/.config/zed/keymap.json` (`j`/`k` →
+`editor::MoveDown`/`MoveUp`, `SelectDown`/`SelectUp` en visual).
+
+VSCodeVim n'a **aucune** option pour ça. Par défaut `j`/`k` et `<Down>`/`<Up>`
+passent par `Position.getDown()/getUp()` = ligne **logique** ; seuls `gj`/`gk`
+appellent `cursorMove` `by: "wrappedLine"` (source v1.32.4 : classes `Pe`/`ke`,
+modes Normal + Visual). Solution retenue : remapper `j`/`k` sur `gj`/`gk`.
+
+    "vim.normalModeKeyBindings":          [{ "before": ["j"], "after": ["g", "j"] }, { "before": ["k"], "after": ["g", "k"] }]
+    "vim.visualModeKeyBindings":          [ idem ]
+    "vim.operatorPendingModeKeyBindings": [ idem ]
+
+`operatorPendingModeKeyBindings` est indispensable : sans lui `dj`/`dk` restent
+sur le mouvement logique. `<Down>`/`<Up>` ne sont pas remappés (laissés
+logiques).
+
+**Fausse piste, testée puis retirée : `vim.foldfix`.** Son nom et sa description
+(« hack to move around folds ») laissent croire qu'il bascule `j`/`k` sur
+`wrappedLine` — première hypothèse, fausse. Sa branche dans `MoveDown`/`MoveUp`
+instancie `class H … by="line"` (ligne **logique**) et n'utilise
+`by="wrappedLine"` que dans une boucle interne pour franchir un fold : le
+résultat reste un déplacement par ligne logique. Symptôme observé : en visual,
+`j` saute du titre à la fin du paragraphe.
+
+### Wrap à 80 colonnes
+
+Côté nvim, vérifié : `vim.opt.textwidth = 80`
+(`~/.config/nvim/lua/config/keymaps.lua`), avec un `formatoptions` contenant `t`
+(`jcroqlnt`, défaut LazyVim) → coupure automatique à la frappe.
+
+VSCode n'a **pas** d'équivalent « hard wrap à la frappe ». Ajouté dans
+`~/.config/VSCodium/User/settings.json` :
+
+    "editor.wordWrap": "wordWrapColumn",
+    "editor.wordWrapColumn": 80,
+
+soit un wrap **visuel** à 80 (aucun `\n` inséré, le fichier reste écrit tel
+quel). L'option VSCodeVim `vim.textwidth` n'aide pas : son défaut est déjà 80 et
+elle est réservée à `gq` / `:right` / `:center` (source v1.32.4), pas au retour
+à la ligne pendant la saisie.
+
+**Reste :** non déclaratif (copie manuelle du dotfile). Le fichier initial du
+repo `vscodium/settings.json` n'a **pas** été modifié (il garde sa valeur d'état
+de départ) — ces réglages ne vivent que dans le live, à reporter en home-manager
+en phase 2.
+
+## Neovim — config réécrite en Lua, sans LazyVim (2026-10-11)
+
+Le `nvim/` du repo (copie de `~/.config/nvim/config.bak/`) est l'install LazyVim
+du départ — non touchée. Le live, lui, n'avait plus d'`init.lua` : nvim tournait
+donc en vanilla. Config réécrite à la main le 2026-10-11 dans `~/.config/nvim/`,
+hors repo (phase 1, dotfiles classiques) :
+
+    init.lua
+    lua/config/{options,keymaps,autocmds}.lua
+    lua/plugins/{colorscheme,neo-tree,treesitter,bufferline,nvim-lint,fzf-lua}.lua
+
+### Gestionnaire de plugins — `vim.pack`
+
+`vim.pack` est intégré à Neovim 0.12 (ici 0.12.5), donc aucune dépendance
+externe, contrairement à `lazy.nvim` que LazyVim bootstrape par `git clone`.
+Révisions figées dans `~/.config/nvim/nvim-pack-lock.json`, plugins dans
+`~/.local/share/nvim/site/pack/core/opt/`. Marquée **expérimental** dans
+`doc/pack.txt`, mais stable à l'usage. Installation : `vim.pack.add()` au
+démarrage installe ce qui manque (avec confirmation), `vim.pack.update()` ouvre
+un buffer de diff (`:write` pour valider, `:quit` pour abandonner).
+
+Les 43 plugins de l'ancienne install (221 Mo, `~/.local/share/nvim/lazy/` plus
+`mason/`) sont toujours sur disque mais plus rien ne les charge : ils n'ont pas
+été supprimés.
+
+**Piège vécu** : `vim.pack.add()` doit précéder tout `require()` du plugin dans
+le même fichier. Sinon `module 'lint' not found` au démarrage — l'ajout au
+`runtimepath` n'a pas encore eu lieu.
+
+### Repris de `config.bak`, et ce qui a changé
+
+- `options.lua` : `spelllang = { "fr", "en" }` conservé ; `vim.g.mapleader =
+  " "` (la ligne existait mais était commentée, sur `.`) ; ajout de `number`,
+  `termguicolors` et de `fillchars:append({ eob = " " })`.
+- `keymaps.lua` : tout conservé tel quel (`;;` → `<Esc>` en insert,
+  `<C-h>`/`<C-l>`/`<C-t>`/`<C-Tab>`, `textwidth = 80`, `autowriteall`, les
+  `cnoremap <M-j>/<M-k>`), **sauf** le bind `Snacks.terminal` qui dépendait de
+  Snacks.nvim, et `vim.diagnostic.enable(false)`.
+- `autocmds.lua` : vide, comme avant.
+
+### Décisions et pièges
+
+- **Diagnostics réactivés.** `enable(false)` venait de LazyVim. Vérifié dans
+  `runtime/lua/vim/diagnostic.lua` : `M.set` écrit toujours dans le cache et
+  `M.get` — celui qu'utilise `setqflist` — le relit sans consulter le flag, donc
+  la voie quickfix fonctionnait même désactivé. Réactivé pour que `nvim-lint`
+  soit visible dans le buffer.
+- **Thème : c'était tout le problème de coloration.** Le `colorscheme default`
+  de Neovim ne définit pas `Normal` (`runtime/colors/vim.lua`) — d'où un fond
+  qui vient du terminal — et ne colore qu'une quinzaine de groupes. `catppuccin`
+  (mocha) retenu, avec `transparent_background` et `transparent` (fenêtres
+  flottantes : l'aperçu `fzf-lua` en est une). Comparaison faite pour le
+  markdown, en comptant les groupes `@markup.*` définis par chaque thème :
+  catppuccin 52, kanagawa 32, tokyonight 20 (sans niveaux de titres),
+  nightfox et gruvbox 0. `tokyonight` et `kanagawa` sont laissés en commentaire
+  dans `colorscheme.lua`.
+- **Transparence des panneaux.** `tokyonight` garde un fond pour les sidebars et
+  les flottants (`styles.sidebars`/`styles.floats = "dark"`), d'où un
+  neo-tree opaque. Chez `kanagawa`, `transparent = true` ne couvre pas la
+  gouttière (`bg_gutter` pour `LineNr`, `SignColumn`, `FoldColumn`) : recette
+  officielle `colors.theme.all.ui.bg_gutter = "none"`. `catppuccin` n'a pas ce
+  défaut (`LineNr`/`SignColumn` sans `bg`).
+- **treesitter** : branche `main` (nouvelle API
+  `require("nvim-treesitter").install()`) — les tags semver correspondant à
+  l'ancienne API — et pas de chargement paresseux. Neovim 0.12 n'a **aucune**
+  API d'installation de parseurs : `vim.treesitter.install` n'existe pas et
+  `vim.treesitter.language` n'expose que `add`/`require_language`/`register`.
+  Les parseurs sont donc compilés par le plugin, ce qui exige un compilateur C
+  (`gcc`, déjà requis — voir « Missing Nix packages »). Parseurs demandés :
+  bash, c, cpp, json, lua, markdown, markdown_inline, python, rust, toml, vim,
+  vimdoc, xml, yaml. `foldlevel = 99` est posé exprès : sans lui tous les plis
+  sont fermés à l'ouverture.
+- **nvim-lint** : les noms de linters sont ceux du plugin (`clangtidy`, **pas**
+  `clang_tidy`). Pas de linter rust — clippy passe par `rust-analyzer` (LSP),
+  qui n'est pas encore branché. Pas de linter `xmllint` fourni : déclaré à la
+  main avec `require("lint.parser").from_errorformat("%f:%l: %m")`,
+  `stream = "stderr"` et `ignore_exitcode = true` (xmllint sort en 1 dès qu'il
+  trouve une erreur). `clang-tidy` a besoin d'un `compile_commands.json` dans le
+  projet, sinon il ne résout pas les `#include`. Déclenchement sur
+  `BufWritePost` et `BufReadPost`.
+- **fzf-lua** : `<leader>f` = fichiers récents (`oldfiles`), `<C-k>` = fichiers
+  du cwd (`files`). Pas d'arborescence `<leader>ff/fg/fb` comme LazyVim (c'était
+  un préfixe de groupe). S'appuie sur `fzf`, `fd` puis `rg` — les trois sont
+  dans `home.nix`.
+- **neo-tree** : `width = 30` (défaut 40) ; `<leader>e` sur le dossier du fichier
+  affiché, `<leader>E` sur le répertoire de lancement de nvim, mémorisé dans une
+  locale en tête de fichier, avant tout `:cd` et avant le `bind_to_cwd` du
+  plugin.
+- **Paquets Nix ajoutés** (`nixos-config/home.nix`) : `clang-tools` (clangd,
+  clang-tidy, clang-format), `ruff`, `yamllint`, `libxml2` (binaire `xmllint`),
+  `shellcheck`. `jq` et `markdownlint-cli2` y étaient déjà.
+
+### Reste
+
+- Non déclaratif : `~/.config/nvim/` est copié à la main, à passer en
+  `programs.neovim` + `home.file` en phase 2. Question ouverte : plugins via
+  `vim.pack` (réseau au premier lancement, lockfile hors Nix) ou via
+  `pkgs.vimPlugins` (figé par Nix, c'est la voie déjà utilisée pour
+  `tree-sitter`).
+- Pas de LSP dans nvim (aucun `nvim-lspconfig`) : `rust-analyzer` et `clangd`
+  sont dans le profil mais branchés nulle part, donc ni diagnostics LSP, ni
+  clippy (qui passe par rust-analyzer). Le linting, lui, fonctionne : il passe
+  par `nvim-lint`.
+- Non installés : `render-markdown.nvim` (rendu du markdown) et `lualine`
+  (la barre de statut est restée celle de Neovim).

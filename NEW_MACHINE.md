@@ -79,6 +79,14 @@ switch` séparé à lancer.)
       moniteurs (`CHANGE_ME_LEFT`/`CHANGE_ME_RIGHT` si jamais remplis, ou les
       valeurs actuelles du MacBook) — à vérifier/adapter avec `hyprctl
       monitors` sur le nouveau matériel.
+- [ ] **Bureaux virtuels** : les binds de `~/.config/hypr/hyprland.lua`
+      (`Super+1..0` puis `code:20`/`code:21` pour les slots 1..12,
+      `Super+SHIFT+…` pour y déplacer la fenêtre, `Super+CTRL+1..5` pour changer
+      de groupe, `Super+CTRL+SHIFT+1..5` pour y envoyer la fenêtre,
+      `Super+Tab`/`+SHIFT`/`+CTRL` et la molette pour cycler) et l'appel
+      `omarchy-wsgroup refresh` à l'autostart. Le paquet `omarchy-wsgroup`
+      lui-même est déclaratif (`home.nix`) ; le fichier de binds ne l'est pas
+      encore (voir NOTES.md, « Bureaux virtuels »).
 
 ## Notes / pièges déjà rencontrés
 
@@ -127,6 +135,20 @@ switch` séparé à lancer.)
       retombe sur son binaire que si elle est absente). Alternative plus large
       si d'autres binaires génériques posent problème :
       `programs.nix-ld.enable = true` dans `configuration.nix`.
+- [ ] **Neovim** : la config n'est pas dans ce repo — `~/.config/nvim/` est un
+      dotfile à part (le `nvim/` du repo est l'install LazyVim de départ, jamais
+      modifiée). Copier `~/.config/nvim/` depuis cette machine, puis lancer
+      `nvim` une fois : `vim.pack` installe les plugins manquants (**réseau
+      requis**, révisions figées par `nvim-pack-lock.json`) et `nvim-treesitter`
+      compile les parseurs (`gcc`, déclaratif). Les binaires des linters
+      (`clang-tools`, `ruff`, `yamllint`, `libxml2`, `shellcheck`) viennent du
+      rebuild. Détail et pièges dans NOTES.md, « Neovim — config réécrite ».
+- [ ] **VSCodium** : copier `vscodium/*.json` dans `~/.config/VSCodium/User/`,
+      puis ajouter à la main (le dotfile du repo est l'état initial) :
+      `"editor.wordWrap": "wordWrapColumn"` + `"editor.wordWrapColumn": 80`,
+      et les remaps `j`/`k` → `gj`/`gk` dans `vim.normalModeKeyBindings`,
+      `vim.visualModeKeyBindings` et `vim.operatorPendingModeKeyBindings`.
+      Raisons dans NOTES.md, « VSCodium — réglages vim ».
 - [ ] **Lanceur `.desktop` "Firefox distant (VNC)"** : posé à la main dans
       `~/.local/share/applications/firefox-remote-vnc.desktop`, pas dans le
       flake — à recréer sur une nouvelle machine (contenu complet dans
@@ -140,6 +162,12 @@ switch` séparé à lancer.)
       `git show` / `git log -p` exigent alors `--ext-diff` ; retour au diff
       normal via `git config --global --unset diff.external`. Delta a un
       module équivalent (`programs.delta`) pour le même jour.
+- [ ] **Wayle (barre)** : `~/.config/wayle/` est manuel — `config.toml`
+      (l'`imports` de `wsgroup.toml`), `runtime.toml` (layout de la barre, les 5
+      modules `custom-wsg1..5`, la `BarGroup` `wsgroups`, `show-special =
+      false`), `styles/index.scss` (CSS scoped `#wsgroups`). `wsgroup.toml` est
+      généré à chaud par `omarchy-wsgroup` : à ne **pas** déclarer. Raison du
+      statu quo et options dans NOTES.md, « Bureaux virtuels ».
 
 ## Pas d'action requise (déjà déclaratif, confirmé fonctionner après rebuild)
 

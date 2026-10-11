@@ -12,11 +12,15 @@ next: passer les dotfiles restants en déclaratif via home-manager (phase 2)
 - Paquets : bitwarden-desktop, tigervnc, herdr, zed, claude-desktop, Paseo
   (build du fork local), difftastic/delta, nodejs, rust.
 - Bureaux virtuels `omarchy-wsgroup` packagés en nix.
+- Config nvim réécrite sans LazyVim (Lua + `vim.pack`, thème, treesitter,
+  linters) ; linters C/C++/Python/YAML/XML/shell déclarés dans `home.nix`
+  (rebuild à faire).
 
 ## Reste
 
 - Phase 2 : figer les dotfiles restants en déclaratif — `hyprland.lua`, les
-  fichiers wayle, la config Zed, le lanceur `.desktop` VNC, `diff.external`.
+  fichiers wayle, la config Zed, `~/.config/nvim/`, le lanceur `.desktop` VNC,
+  `diff.external`.
 - Trancher le sort de wayle : `runtime.toml` déclaratif sans GUI, ou statu quo.
 - Hyprland : corriger les 8 binds `move_into_direction` ; `m1` n'éteint pas le
   2e écran (impasses documentées dans `NOTES.md`).
