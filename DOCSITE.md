@@ -1,8 +1,10 @@
 # Documentation contract
 
-This repository is listed in the manifest of an external documentation site (the `projects.yml` of
-the doc-site repository). For a repository in that list, the site reads two files at the repository
-root and reads nothing else — `README.md` is not part of the page.
+This repository belongs to an account enumerated by an external documentation site (the `accounts`
+of the `projects.yml` in the doc-site repository). For a repository of that account, the site reads
+two files at the repository root and reads nothing else — `README.md` is not part of the page. A
+repository carrying neither of them gets no page: it is listed, flagged, on the site's repository
+list.
 
 ## Language
 
