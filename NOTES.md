@@ -1289,3 +1289,73 @@ le même fichier. Sinon `module 'lint' not found` au démarrage — l'ajout au
   par `nvim-lint`.
 - Non installés : `render-markdown.nvim` (rendu du markdown) et `lualine`
   (la barre de statut est restée celle de Neovim).
+
+## Bluetooth — souris MX Vertical (BLE) : appairage puis coexistence Wi-Fi/BT (2026-10-16)
+
+Souris Logitech **MX Vertical** en Bluetooth (BLE HID), appairage via l'utilitaire de wayle.
+Symptôme : la souris apparaît dans la liste mais l'appairage échoue / la connexion ne tient pas.
+
+### Diagnostic
+
+Matériel : MacBookPro12,1, combo **Broadcom BCM43602** (BT 4.2), kernel 6.18.53, BlueZ 5.87.
+
+1. **Appairage** — tentatives avec `org.bluez.Error.Failed: le-connection-abort-by-local` (journal
+   wayle) puis `Failed to pair: org.bluez.Error.ConnectionAttemptFailed` suivi de
+   `LE.Disconnected - org.bluez.Reason.Unknown, Unspecified`. La souris n'était pas en mode
+   appairage.
+2. **Flap** — une fois appairée (`Paired/Bonded/Trusted = yes`), le lien clignotait en boucle
+   (connexion/déconnexion plusieurs fois par seconde), avec à chaque cycle côté `bluetoothd` :
+   `profiles/input/hog-lib.c: … Request attribute has encountered an unlikely error`
+   (HID Information, Report Reference, Protocol Mode, set_report).
+
+### Cause racine
+
+Coexistence **Wi-Fi 2,4 GHz / BT** sur le combo BCM43602 : le Wi-Fi était sur le canal 1
+(2412 MHz) et partage la radio avec le Bluetooth LE → le lien BLE ne s'établit / ne se maintient pas.
+
+Preuve par test contrôlé (une seule variable) :
+
+| Wi-Fi | Souris |
+|---|---|
+| 2,4 GHz actif (`gst-network-n`, canal 1) | flap permanent, erreurs HOG en boucle |
+| Wi-Fi coupé | `Connected=yes` stable 20 s, aucune erreur HOG |
+
+### Résolution
+
+- **Appairage** : mettre la souris en mode appairage — bouton **Easy-Switch** (dessus, derrière la
+  molette) **maintenu ~3 s** (LED clignote vite) ; un appui court change de canal (1/2/3). Puis
+  `bluetoothctl` : `agent on` / `default-agent` / `pair F3:C3:75:82:7B:72`. Le bond n'a été créé
+  qu'à la 3ᵉ tentative (`org.bluez.Error.ConnectionAttemptFailed` pour les 2 premières). Puis
+  `trust`.
+- **Coexistence** : bascule du Wi-Fi en **5 GHz** + priorité de connexion :
+
+  ```sh
+  nmcli con mod gst-network-ac connection.autoconnect-priority 10
+  nmcli con mod gst-network-n  connection.autoconnect-priority 0
+  nmcli con up gst-network-ac
+  ```
+
+  Résultat : Wi-Fi sur `gst-network-ac` (5180 MHz), souris stable, 0 erreur HOG.
+
+### Notes
+
+- Changement **impératif** (store de profils NetworkManager sous `/etc/NetworkManager/…`),
+  persistant aux reboots et aux `nixos-rebuild` : rien à mettre dans `nixos-config/` en phase 1.
+  À rendre déclaratif en phase 2 si on veut le rejouer sur une install neuve.
+- Si le 5 GHz tombe, la machine retombe sur `gst-network-n` (2,4 GHz) → le flap revient. Repli :
+  rester sur l'Ethernet ou couper le Wi-Fi.
+- Le même `le-connection-abort-by-local` avait touché un **autre** périphérique BLE
+  (`D0:39:CF:92:0C:8B`) le 2026-10-14 → problème côté hôte, pas côté souris.
+
+### Commandes de diagnostic utiles
+
+```sh
+bluetoothctl info F3:C3:75:82:7B:72          # Paired/Bonded/Trusted/Connected, AdvertisingFlags
+journalctl -u bluetooth -b | grep -iE 'hog-lib|Disconnected'
+nmcli -t -f ACTIVE,SSID,FREQ dev wifi list   # bande Wi-Fi active
+# état radio le plus fin (root requis) : sudo btmon
+```
+
+- `AdvertisingFlags: 05` = LE Limited Discoverable + BR/EDR non supporté → souris en mode appairage,
+  en BLE.
+- MAC `F3:C3:75:82:7B:72` = adresse **random static** (ne tourne pas).
